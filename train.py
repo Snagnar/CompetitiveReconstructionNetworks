@@ -98,7 +98,7 @@ def main(args):
 
     logging.info("Dataset created!")
     train_loader = DataLoader(train_dataset, args.batch_size, num_workers=args.num_workers, pin_memory=True, shuffle=True)
-    test_loader = DataLoader(test_dataset, max(args.batch_size, 128), num_workers=args.num_workers, pin_memory=True, shuffle=False)
+    val_loader = DataLoader(test_dataset, max(args.batch_size, 128), num_workers=args.num_workers, pin_memory=True, shuffle=False)
 
     name = None
     logger = True
@@ -136,40 +136,64 @@ def main(args):
     example_input = iter(train_loader).next()
     input_shape = example_input.shape
     model_class = CompetitiveReconstructionNetwork if args.model == "crn" else RoadAnomalyDetector
-    if args.model_input is None:
-        logging.info("Training new model...")
-        if args.model == "original":
-            args.arch = 0
-        elif args.model == "double-skip":
-            args.arch = 1
-        elif args.model == "balanced-generator":
-            args.arch = 2
-        elif args.model == "crn":
-            args.arch = 3
-        if args.training_function == "original":
-            args.training_mode = 0
-        elif args.training_function == "double-skip":
-            args.training_mode = 1
-        elif args.training_function == "balanced-generator":
-            args.training_mode = 2
-        elif args.training_function == "crn":
-            args.training_mode = 3
-        if args.validation_function == "original":
-            args.validation_function = 0
-        elif args.validation_function == "double-skip":
-            args.validation_function = 1
-        elif args.validation_function == "balanced-generator":
-            args.validation_function = 2
-        elif args.validation_function == "only-disc":
-            args.validation_function = 4
-        model = model_class(input_shape, **vars(args))
-    else:
-        logging.info("continuing training....")
-        model = model_class.load_from_checkpoint(args.model_input)
+    if args.mode == "train":
+        if args.model_input is None:
+            logging.info("Training new model...")
+            if args.model == "original":
+                args.arch = 0
+            elif args.model == "double-skip":
+                args.arch = 1
+            elif args.model == "balanced-generator":
+                args.arch = 2
+            elif args.model == "crn":
+                args.arch = 3
+            if args.training_function == "original":
+                args.training_mode = 0
+            elif args.training_function == "double-skip":
+                args.training_mode = 1
+            elif args.training_function == "balanced-generator":
+                args.training_mode = 2
+            elif args.training_function == "crn":
+                args.training_mode = 3
+            if args.validation_function == "original":
+                args.validation_function = 0
+            elif args.validation_function == "double-skip":
+                args.validation_function = 1
+            elif args.validation_function == "balanced-generator":
+                args.validation_function = 2
+            elif args.validation_function == "only-disc":
+                args.validation_function = 4
+            model = model_class(input_shape, **vars(args))
+        else:
+            logging.info("continuing training....")
+            model = model_class.load_from_checkpoint(args.model_input)
+        
+        logging.info("Model created!")
+        trainer.fit(model, train_dataloaders=train_loader, val_dataloaders=[val_loader])
     
-    logging.info("Model created!")
-    trainer.fit(model, train_dataloaders=train_loader, val_dataloaders=[test_loader])
+    elif args.mode == "inference":
+        data_path = Path(args.dataset_path)
+        check_paths(data_path, names=["image directory"])
+        results = Path(args.anomaly_score_file)
+        results.parent.mkdir(parents=True, exist_ok=True)
 
+        # load model from specified checkpoint
+        model = model_class.load_from_checkpoint(args.model_input)
+        model.image_output_path = Path(args.image_output_path)
+        model.image_output_path.mkdir(parents=True, exist_ok=True)
+
+        device = 'cuda' if torch.cuda.device_count() > 0 and not args.cpu else 'cpu'
+        logging.info(f"using device: {device}")
+        model = model.to(device)
+
+        anomaly_scores = model.inference(val_loader, device, shall_clean=True)
+        anomaly_scores += model.inference(train_loader, device)
+        with results.open("w") as result_file:
+            result_file.write("file_name,anomaly_score\n")
+            for image_nr, score in zip(range(len(test_dataset)), anomaly_scores):
+                result_file.write(f"val-{image_nr},{score}\n")
+            for image_nr, score in zip(range(len(train_dataset)), anomaly_scores[len(test_dataset):]):
+                result_file.write(f"train-{image_nr},{score}\n")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("Training of Network for Road anomaly detection")
