@@ -7,16 +7,6 @@ from torch.nn import (
     Module, Sequential, Conv2d, BatchNorm2d, LeakyReLU, ReLU, ConvTranspose2d, ModuleList, Tanh, Linear, BatchNorm1d, Upsample
 )
 
-# ORIGINAL_ARCH = False
-# ORIGINAL_TRAIN = False
-ORIGINAL = 0
-DOUBLE_SKIP = 1
-BALANCED_GENERATOR = 2
-COMPETITIVE = 3
-ONLY_DISC = 4
-
-ARCH = DOUBLE_SKIP
-TRAIN = DOUBLE_SKIP
 
 def create_optimizer(name: str, model: Module, lr: float, momentum: float) -> Optimizer:
     """creates the specified optimizer with the given parameters
@@ -91,19 +81,9 @@ def create_scheduler(
 class DoubleConv(Module):
     """Module placed at the beginning and end of the U-Net architecture. Used to transform input channels 
     to specified channel size."""
-    def __init__(self, input_channels, output_channels, output_layer = False, bias=False, arch=ORIGINAL):
+    def __init__(self, input_channels, output_channels, output_layer = False, bias=False):
         super(DoubleConv, self).__init__()
-        if arch == ORIGINAL:
-            layers = [Conv2d(input_channels, output_channels, kernel_size=3, padding=1, bias=bias)]
-        elif arch != ORIGINAL:
-            layers = [
-                Conv2d(input_channels, output_channels, kernel_size=3, padding=1, bias=bias),
-                ReLU(),
-                BatchNorm2d(output_channels),
-                Conv2d(output_channels, output_channels, kernel_size=3, padding=1, bias=bias),
-            ]
-        else:
-            layers = []
+        layers = [Conv2d(input_channels, output_channels, kernel_size=3, padding=1, bias=bias)]
         if output_layer:
             layers.append(Tanh())
         else:
@@ -118,7 +98,7 @@ class DoubleConv(Module):
 
 class DownUnit(Module):
     """Down scaling unit of U-Net. Input of form input_channels x w x h is transformed to output_channels x w/2 x h/2"""
-    def __init__(self, input_channels, output_channels, stride=2, bias=False, arch=ORIGINAL):
+    def __init__(self, input_channels, output_channels, stride=2, bias=False):
         super(DownUnit, self).__init__()
         self.module = Sequential(
             Conv2d(input_channels, output_channels, kernel_size=4, stride=stride, padding=1, bias=bias),
@@ -131,22 +111,14 @@ class DownUnit(Module):
 
 class UpUnit(Module):
     """Upscaling unit of U-Net. transforms input to target shape and specified output channels."""
-    def __init__(self, input_channels, output_channels, target_shape, bias, last_one=False, arch=ORIGINAL):
+    def __init__(self, input_channels, output_channels, target_shape, bias, last_one=False):
         super(UpUnit, self).__init__()
-        if arch == ORIGINAL:
-            if last_one:
-                self.module = ConvTranspose2d(input_channels, output_channels, kernel_size=4, stride=2, padding=1)
-            else:
-                self.module = Sequential(
-                    ConvTranspose2d(input_channels, output_channels, kernel_size=4, stride=2, padding=1),
-                    ReLU(),
-                ) 
+        if last_one:
+            self.module = ConvTranspose2d(input_channels, output_channels, kernel_size=4, stride=2, padding=1)
         else:
             self.module = Sequential(
-                Upsample(size=target_shape[-2:]),
-                Conv2d(input_channels, output_channels, kernel_size=3, padding=1, bias=bias),
+                ConvTranspose2d(input_channels, output_channels, kernel_size=4, stride=2, padding=1),
                 ReLU(),
-                BatchNorm2d(output_channels),
             )
     
     def forward(self, input_from_lower_module, input_from_skip):
@@ -156,19 +128,18 @@ class UpUnit(Module):
 
 class RoadImageUNet(Module):
     """Unet used for road image anomaly detection."""
-    def __init__(self, input_shape, levels=4, stride=2, conv_bias=False, arch=ORIGINAL):
+    def __init__(self, input_shape, levels=4, stride=2, conv_bias=False):
         super(RoadImageUNet, self).__init__()
         self.input_shape = input_shape
         self.stride = stride
         self.conv_bias = conv_bias
-        self.arch = arch
         self._build_unet(levels)
     
     def _build_unet(self, levels):
         # build down sampling units, record which shapes are produced (used for correct upscaling)
         num_channels = 64
-        self.downs = [DoubleConv(self.input_shape[1], num_channels, arch=self.arch)]
-        self.ups = [DoubleConv(num_channels, self.input_shape[1], output_layer=True,  arch=self.arch)]
+        self.downs = [DoubleConv(self.input_shape[1], num_channels)]
+        self.ups = [DoubleConv(num_channels, self.input_shape[1], output_layer=True)]
         example_input = torch.zeros(self.input_shape)
         target_shapes = []
         for _ in range(levels):
@@ -180,7 +151,7 @@ class RoadImageUNet(Module):
         # build up sampling units using the correct target shapes
         num_channels = 64
         for i in range(levels):
-            self.ups.append(UpUnit(min(num_channels * 4, 1024), self.input_shape[1] if (i == 0 and ARCH == ORIGINAL) else num_channels, target_shapes[i], self.conv_bias, last_one=(i == 0),  arch=self.arch))
+            self.ups.append(UpUnit(min(num_channels * 4, 1024), self.input_shape[1] if (i == 0) else num_channels, target_shapes[i], self.conv_bias, last_one=(i == 0)))
             num_channels = min(num_channels * 2, 512)
         self.ups.reverse()
 

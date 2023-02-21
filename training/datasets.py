@@ -1,5 +1,6 @@
 """
 CREATE DATASETS
+partially taken from https://github.com/samet-akcay/skip-ganomaly/blob/master/lib/data/datasets.py
 """
 
 # pylint: disable=C0301,E1101,W0622,C0103,R0902,R0915

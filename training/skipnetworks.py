@@ -1,4 +1,5 @@
 """ Network architectures.
+Partly taken and modified from Skip-GANomaly repository: httpshttps://github.com/samet-akcay/skip-ganomaly/blob/master/lib/models/networks.py
 """
 # pylint: disable=W0221,W0622,C0103,R0913
 

@@ -1,4 +1,6 @@
 torch
+torchvision
+imageio
 pytorch_lightning
 wandb
 tqdm

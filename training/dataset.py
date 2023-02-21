@@ -8,87 +8,7 @@ from torch.utils.data import Dataset
 from torchvision import transforms
 from imageio import imread
 from PIL import Image
-from pytorch_lightning import LightningDataModule
-from torchvision.datasets import CIFAR10, MNIST
-from .datasets import get_cifar_anomaly_dataset, get_mnist_anomaly_dataset
 from utils.utils import check_paths
-
-def random_obscure(images):
-    obscure_transform = transforms.Compose((
-        transforms.RandomErasing(),
-        transforms.RandomInvert(),
-        transforms.RandomSolarize(0.0),
-        transforms.RandomApply([transforms.ColorJitter()], 0.5)
-    ))
-    obscured = images.clone()
-    for idx, image in enumerate(obscured):
-        if idx % 2 == 0:
-            obscured[idx] = obscure_transform(image)
-    return obscured, torch.Tensor([int(not torch.equal(image, obscure)) for (image, obscure) in zip(images, obscured)])
-        
-        
-        
-
-class Cifar10AnomalyDataset(Dataset):
-    
-    def __init__(self, data_dir, train=True, imsize=32, abnormal_class_name=0):
-        self.data_dir = Path(data_dir)
-        check_paths(self.data_dir)
-        if not self.data_dir.is_dir():
-            raise RuntimeError(f"direcotry {str(self.data_dir.resolve())} is not a directory!")
-        
-        transform = transforms.Compose([transforms.Resize(imsize),
-                                        transforms.ToTensor(),
-                                        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
-
-        train_dataset = CIFAR10(root='./data', train=True, download=True, transform=transform)
-        test_dataset = CIFAR10(root='./data', train=False, download=True, transform=transform)
-        train_dataset, test_dataset = get_cifar_anomaly_dataset(train_dataset, test_dataset, abnormal_class_name)
-        if train:
-            self.dataset = train_dataset
-        else:
-            self.dataset = test_dataset
-        self.train = train
-
-    def __getitem__(self, index):
-        if self.train:
-            return self.dataset[index][0]
-        else:
-            return self.dataset[index]
-
-    def __len__(self):
-        return len(self.dataset)
-    
-class MNISTAnomalyDataset(Dataset):
-    
-    def __init__(self, data_dir, train=True, abnormal_class_idx=0, imsize=128):
-        self.data_dir = Path(data_dir)
-        check_paths(self.data_dir)
-        if not self.data_dir.is_dir():
-            raise RuntimeError(f"direcotry {str(self.data_dir.resolve())} is not a directory!")
-
-        transform = transforms.Compose([transforms.Resize(imsize),
-                                        transforms.ToTensor(),
-                                        transforms.Normalize((0.1307,), (0.3081,))])
-
-
-        train_dataset = MNIST(root='./data', train=True, download=True, transform=transform)
-        test_dataset = MNIST(root='./data', train=False, download=True, transform=transform)
-        train_dataset, test_dataset = get_mnist_anomaly_dataset(train_dataset, test_dataset, int(abnormal_class_idx))
-        if train:
-            self.dataset = train_dataset
-        else:
-            self.dataset = test_dataset
-        self.train = train
-
-    def __getitem__(self, index):
-        if self.train:
-            return self.dataset[index][0]
-        else:
-            return self.dataset[index]
-
-    def __len__(self):
-        return len(self.dataset)
 
 
 class PanoramaDataset(Dataset):
@@ -109,28 +29,19 @@ class PanoramaDataset(Dataset):
         self.train = train
         self.cache_images = cache_images
         self.inference = inference
-        self.image_metadata_files = [p_file for p_file in self.data_dir.iterdir() if p_file.suffix == ".xml"]
-        self.image_metadata_files.sort()
         self.good_ones = []
         self.bad_ones = []
-        for metadata_file in self.image_metadata_files:
-            metadata = minidom.parse(metadata_file.open())
-            objects = metadata.getElementsByTagName("object")
-            if len(objects) <= 1:
-                self.good_ones.append(metadata_file.parent / (metadata_file.stem + ".jpg"))
-            else:
-                self.bad_ones.append(metadata_file.parent / (metadata_file.stem + ".jpg"))
+        
+        self.good_ones = list((self.data_dir / "good_ones").iterdir())
+        self.bad_ones = list((self.data_dir / "bad_ones").iterdir())
         print("num good panorama images:", len(self.good_ones), "bad ones:", len(self.bad_ones))
         split_idx = int(len(self.good_ones) * train_split)
         if self.train:
-            # self.image_files = self.good_ones[:int(len(self.good_ones) * train_split)]
             self.dataset = [(image_file, 0) for image_file in self.good_ones[:split_idx]]
         else:
             self.dataset = [(image_file, 1) for image_file in self.bad_ones[:min(2 * split_idx, len(self.bad_ones))]]
             self.dataset += [(image_file, 0) for image_file in self.good_ones[split_idx:]]
             
-            # for directory in (self.data_dir / "test").iterdir():
-            #     self.image_files += list(directory.iterdir())
         print(self.train, len(self.dataset))
         random.shuffle(self.dataset)
         self.images = None
@@ -153,15 +64,6 @@ class PanoramaDataset(Dataset):
         if self.train:
             return image
         else:
-            # if image_file.parent.name == "good":
-            #     target = torch.zeros([1, image.shape[-2], image.shape[-1]])
-            # else:
-            #     target = Image.open(
-            #         image_file.replace("/test/", "/ground_truth/").replace(
-            #             ".png", "_mask.png"
-            #         )
-            #     )
-            #     target = self.target_transform(target)
             if self.inference:
                 return image, image_file.stem
             else:
@@ -231,15 +133,6 @@ class MVTecDataset(Dataset):
         if self.train:
             return image
         else:
-            # if image_file.parent.name == "good":
-            #     target = torch.zeros([1, image.shape[-2], image.shape[-1]])
-            # else:
-            #     target = Image.open(
-            #         image_file.replace("/test/", "/ground_truth/").replace(
-            #             ".png", "_mask.png"
-            #         )
-            #     )
-            #     target = self.target_transform(target)
             if self.inference:
                 return image, image_file.stem
             else:
@@ -331,19 +224,19 @@ class AnnotatedRoadImageDataset(Dataset):
     train_split = 0.7
     def __init__(self, data_dir, train=True, inference=False, cache=True, imsize=128):
         super().__init__()
-        # if train:
         self.data_dir = Path(data_dir) / "good_ones"
         check_paths(self.data_dir)
         if not self.data_dir.is_dir():
             raise RuntimeError(f"directory {str(self.data_dir.reslove())} is not a directory!")
+    
         intensity_dir = self.data_dir / "intensity_files"
         height_dir = self.data_dir / "height_files"
         self.inference = inference                                                                                                                                                             
         self.files = list(zip(sorted(list(height_dir.iterdir())), sorted(list(intensity_dir.iterdir()))))
+
         if len(self.files) == 0:
             raise RuntimeError(f"directory {str(self.data_dir.resolve())} does not contain any files!")
         random.shuffle(self.files)
-        # self.files = random.sample(self.files, len(self.files), )
         if train:
             self.dataset = RoadImageDatasetPartition(self.files[:int(self.train_split * len(self.files))], train=True, imsize=imsize)
         else:
@@ -360,8 +253,10 @@ class AnnotatedRoadImageDataset(Dataset):
             random.shuffle(self.files)
             self.dataset = RoadImageDatasetPartition(self.files, train=False, imsize=imsize)
         print(train, len(self.dataset))
+
         self.cache = cache
         self.cached_dataset = None
+    
         if cache:
             print("caching...")
             self.cached_dataset = [self.dataset[idx] for idx in range(len(self.dataset))]

@@ -24,41 +24,14 @@ def add_argparse_args(parser):
     model_parser.add_argument("--reconstruction-weight", type=float, default=1.0)
     model_parser.add_argument("--network-depth", type=int, default=4)
     model_parser.add_argument("--generator-network-depth", type=int, default=4)
-    model_parser.add_argument("--warmup-steps", type=int, default=0)
-    model_parser.add_argument("--stride", type=int, default=4)
-    model_parser.add_argument("--feedback-group-size", type=int, default=0)
-    model_parser.add_argument("--abnormal-class-idx", type=int, default=0)
-    model_parser.add_argument("--abnormal-class-name", type=str, default=0)
-    model_parser.add_argument("--arch", type=int, default=0)
-    model_parser.add_argument("--training-mode", type=int, default=0)
-    model_parser.add_argument("--minimum-learning-units", type=int, default=4)
     model_parser.add_argument("--imsize", type=int, default=128)
-    model_parser.add_argument("--gamma_crn", type=float, default=0.75)
-    model_parser.add_argument("--gamma_reconstruction", type=float, default=0.75)
-    model_parser.add_argument("--gamma_feedback", type=float, default=0.75)
-    model_parser.add_argument("--gamma_discrimination", type=float, default=0.75)
     model_parser.add_argument("--feedback-weight", type=float, default=1.0)
     model_parser.add_argument("--discrimination-weight", type=float, default=1.0)
-    model_parser.add_argument("--self-discrimination", type=bool, default=False,
-                                help="if activated the feedback loss for one unit will contain the discrimination of the own reconstruction.")
-    model_parser.add_argument("--dynamic-loss-weights", type=bool, default=False,
-                                help="if activated loss weights are determined dynamically.")
     model_parser.add_argument("--improved", type=bool, default=False,
-                                help="if activated loss weights are determined dynamically.")
-    model_parser.add_argument("--competitive-cross-validation", type=bool, default=False,
-                                help="if activated, competitive units are trained on differing data samples.")
-    model_parser.add_argument("--ignore-feedback", type=bool, default=False,
-                                help="if activated, competitive units are trained on differing data samples.")
-    model_parser.add_argument("--bagging", type=bool, default=False,
-                                help="if activated, competitive units are trained on differing data samples.")
+                                help="if activated, the crns use the improved unet version.")
     model_parser.add_argument("--use-dropout", type=bool, default=False,
                                 help="if activated, competitive units are trained on differing data samples.")
-    model_parser.add_argument("--feedback-loss-reduction", choices=["mean", "sum"], default="sum", help="reduction of feedback losses")
-    model_parser.add_argument("--discrimination-loss-reduction", choices=["mean", "sum"], default="sum", help="reduction of discrimination losses")
-    model_parser.add_argument("--gamma_disc", type=float, default=0.75)
-    model_parser.add_argument("--gamma_gen", type=float, default=0.75)
     model_parser.add_argument("--image-output-interval", type=float, default=10)
-    model_parser.add_argument("--k-lambda", type=float, default=0.001)
     model_parser.add_argument("--lr-scheduler", type=str,
                         help="name of the lr scheduler to use. default to none")
     model_parser.add_argument("--norm", type=str, default="instance",
@@ -98,7 +71,7 @@ def main(args):
 
     logging.info("Dataset created!")
     train_loader = DataLoader(train_dataset, args.batch_size, num_workers=args.num_workers, pin_memory=True, shuffle=True)
-    val_loader = DataLoader(test_dataset, max(args.batch_size, 128), num_workers=args.num_workers, pin_memory=True, shuffle=False)
+    val_loader = DataLoader(test_dataset, max(args.batch_size * 4, 128), num_workers=args.num_workers, pin_memory=True, shuffle=False)
 
     name = None
     logger = True
@@ -139,30 +112,6 @@ def main(args):
     if args.mode == "train":
         if args.model_input is None:
             logging.info("Training new model...")
-            if args.model == "original":
-                args.arch = 0
-            elif args.model == "double-skip":
-                args.arch = 1
-            elif args.model == "balanced-generator":
-                args.arch = 2
-            elif args.model == "crn":
-                args.arch = 3
-            if args.training_function == "original":
-                args.training_mode = 0
-            elif args.training_function == "double-skip":
-                args.training_mode = 1
-            elif args.training_function == "balanced-generator":
-                args.training_mode = 2
-            elif args.training_function == "crn":
-                args.training_mode = 3
-            if args.validation_function == "original":
-                args.validation_function = 0
-            elif args.validation_function == "double-skip":
-                args.validation_function = 1
-            elif args.validation_function == "balanced-generator":
-                args.validation_function = 2
-            elif args.validation_function == "only-disc":
-                args.validation_function = 4
             model = model_class(input_shape, **vars(args))
         else:
             logging.info("continuing training....")
@@ -208,23 +157,20 @@ if __name__ == "__main__":
                      help="toggles force logging to stdout. if a log file is specified, logging will be "
                      "printed to both the log file and stdout")
     parser.add_argument("--mode", choices=["train", "inference"], required=True)
-    parser.add_argument("--model", choices=["double-skip", "crn", "original", "balanced-generator"], required=False, default="double-skip")
-    parser.add_argument("--training-function", choices=["double-skip", "crn", "original", "balanced-generator"], required=False, default="double-skip")
-    parser.add_argument("--validation-function", choices=["double-skip", "crn", "original", "balanced-generator", "only-disc"], required=False, default="double-skip")
+    parser.add_argument("--model", choices=["dagan", "crn"], required=False, default="crn")
     parser.add_argument("--pipeline", type=str, required=False, help="path to pipeline json")
-    parser.add_argument("--experiment", type=str, required=False, help="path to pipeline json")
-    parser.add_argument("--training-steps", type=int, required=False, default=20000, help="path to pipeline json")
-    parser.add_argument("--epochs", type=int, required=False, help="path to pirpeline json")
-    parser.add_argument("--batch-size", type=int, required=False, default=2, help="path to pipeline json")
-    parser.add_argument("--num-competitive-units", type=int, default=3, required=False, help="path to pipeline json")
-    parser.add_argument("--num-workers", type=int, required=False, default=8, help="path to pipeline json")
-    parser.add_argument("--dataset-path", type=str, required=False, help="path to pipeline json")
-    parser.add_argument("--model-input", type=str, required=False, help="path to pipeline json")
-    parser.add_argument("--dataset", type=str, required=False, help="path to pipeline json")
-    parser.add_argument("--checkpoint-path", type=str, required=False, default=None, help="path to pipeline json")
-    parser.add_argument("--conv-bias", type=bool, required=False, default=False, help="activate weights and biases logging")
-    parser.add_argument("--cpu", action="store_true", help="activate weights and biases logging")
-    parser.add_argument("--auto-set-name", action="store_true", help="activate weights and biases logging")
+    parser.add_argument("--experiment", type=str, required=False, help="name of experiment (used for wandb)")
+    parser.add_argument("--training-steps", type=int, required=False, default=20000, help="number of steps to train")
+    parser.add_argument("--epochs", type=int, required=False, help="number of epochs")
+    parser.add_argument("--batch-size", type=int, required=False, default=64)
+    parser.add_argument("--num-competitive-units", type=int, default=3, required=False, help="number of competitive units used for crn")
+    parser.add_argument("--num-workers", type=int, required=False, default=8, help="number of workers for dataloader")
+    parser.add_argument("--dataset-path", type=str, required=False, help="path to dataset")
+    parser.add_argument("--model-input", type=str, required=False, help="path to model (for inference)")
+    parser.add_argument("--dataset", type=str, choices=["RoadImages", "MVTec", "Panorama"], required=False, help="name of dataset")
+    parser.add_argument("--checkpoint-path", type=str, required=False, default=None, help="path to store the model checkpoints")
+    parser.add_argument("--cpu", action="store_true", help="force training on cpu")
+    parser.add_argument("--auto-set-name", action="store_true", help="sets automatically the name of the experiment")
     parser.add_argument("--wandb", action="store_true", help="activate weights and biases logging")
     parser.add_argument("--seed", type=int, default=41020, help="seed")
     parser.add_argument("--wandb-hyperparameter-sweep", action="store_true", help="activate weights and biases hyperparameter sweep")

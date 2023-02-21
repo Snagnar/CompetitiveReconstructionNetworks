@@ -18,14 +18,11 @@ from training.networks import create_optimizer, create_scheduler
 from training.skipnetworks import UnetGenerator, UnetGeneratorImproved, get_norm_layer
 
 
-ADD_ADDITIONAL_UNITS = False
-
 class CompetitiveReconstructionNetwork(LightningModule):
     def __init__(
             self,
             input_shape,
             image_output_interval: int,
-            k_lambda: float,
             optimizer: str,
             momentum: float,
             lr: float,
@@ -35,21 +32,11 @@ class CompetitiveReconstructionNetwork(LightningModule):
             epochs: int,
             image_output_path: str,
             num_competitive_units: int,
-            self_discrimination: bool,
-            bagging: bool,
-            feedback_loss_reduction: str,
-            discrimination_loss_reduction: str,
-            ignore_feedback: bool,
             network_depth: int,
-            dynamic_loss_weights: bool,
-            minimum_learning_units: int,
             feedback_weight: float,
             reconstruction_weight: float,
             discrimination_weight: float,
-            conv_bias: bool,
-            stride: int, 
             use_dropout: bool,
-            feedback_group_size: int = -1,
             norm: str = "instance",
             improved: bool = False,
             **kwargs):
@@ -102,7 +89,6 @@ class CompetitiveReconstructionNetwork(LightningModule):
         self.reconstruction_loss_function = torch.nn.L1Loss()
 
         self.max_roc_auc = 0.0
-        self.max_avg_score = 0.0
         self.store_imgs = []
         
 
@@ -319,7 +305,6 @@ class CompetitiveReconstructionNetwork(LightningModule):
             return
         if batch_index is None:
             batch_index = "full-epoch"
-        max_num_images = 5
         images = []
         for store in self.store_imgs:
             img, reconstruction = store
@@ -344,8 +329,6 @@ class CompetitiveReconstructionNetwork(LightningModule):
         images = []
         for i in range(num_images):
             images.append(self.simple_normalize(imgs[i]))
-            # for j in range(len(reconstructions)):
-            #     images.append(self.simple_normalize(reconstructions[j][i]))
         grid = make_grid(images, nrow=len(reconstructions) + 1 , normalize=False, padding=10, pad_value=0.0)
         if isinstance(batch_index, int):
             batch_index = f"from-input-{batch_index:04d}-{tag}"
