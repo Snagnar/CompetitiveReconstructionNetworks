@@ -47,6 +47,7 @@ def add_argparse_args(parser):
     model_parser.add_argument('--optimizer', type=str, default="adam",
                         help='the optimizer to use. default is adam.')
     model_parser.add_argument("--image-output-path", type=str, default=None)
+    model_parser.add_argument("--anomaly-score-file", type=str, default=None)
 
 
 def main(args):
@@ -121,13 +122,24 @@ def main(args):
     
     elif args.mode == "inference":
         data_path = Path(args.dataset_path)
+        if args.image_output_path is None:
+            image_output_path = Path("inference")
+            logging.info(f"using default image output path: {args.image_output_path.resolve()}")
+        else:
+            image_output_path = Path(args.image_output_path)
+            logging.info(f"using specified image output path: {args.image_output_path.resolve()}")
         check_paths(data_path, names=["image directory"])
-        results = Path(args.anomaly_score_file)
+        if args.anomaly_score_file is None:
+            results = image_output_path / "anomaly_scores.csv"
+            logging.info(f"using default anomaly score file: {results.resolve()}")
+        else:
+            results = Path(args.anomaly_score_file)
+            logging.info(f"using specified anomaly score file: {results.resolve()}")
         results.parent.mkdir(parents=True, exist_ok=True)
 
         # load model from specified checkpoint
         model = model_class.load_from_checkpoint(args.model_input)
-        model.image_output_path = Path(args.image_output_path)
+        model.image_output_path = image_output_path
         model.image_output_path.mkdir(parents=True, exist_ok=True)
 
         device = 'cuda' if torch.cuda.device_count() > 0 and not args.cpu else 'cpu'

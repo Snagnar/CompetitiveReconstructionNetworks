@@ -43,3 +43,41 @@ using the following password: *itJJag8WSxHAM9i* and extract them e.g. to a direc
 The `roadimages.zip` contains the dataset with images extracted from 3D lidar scans of streets in the town of essen.
 The `panorama_images.zip` file contains the dataset of hand labled panorama images obtained from cameras mounted on the scanning vehicles.
 
+# Running experiments
+
+To evaluate the CRN on MVTec, you can use the following command:
+```bash
+python train.py --mode train --training-steps 20000 --model crn --dataset MVTec --auto-set-name --dataset-path=datasets/mvtec/cable
+```
+You can substitute the dataset path to test out different categories. You can log metrics to `Weights & Biases` by adding the `--wandb` flag. However you need a W&B account and an API key for this.
+
+To evaluate CRN on the annotated Panorama images, use the following command:
+```bash
+python train.py --mode train --dataset Panorama --dataset-path datasets/panorama --model crn
+```
+
+
+To evaluate CRN on the annotated road images, use the following command:
+```bash
+python train.py --mode train --dataset RoadImages --dataset-path datasets/roadimages --model crn
+```
+
+To view a full list of parameters, including e.g. the number of competitive units, optimizer or loss weights, run:
+```
+python train.py --help
+```
+
+# Inference
+
+To run inference, you first need to train a model and store checkpoints using the `--checkpoint-path` flag, e.g. for road images:
+```bash
+python train.py --mode train --dataset RoadImages --dataset-path datasets/roadimages --model crn --checkpoint-path model_checkpoints
+```
+
+This stores the best CRN state in `model_checkpoints/`.
+
+To calculate anomaly scores for one whole datasets as well as anomaly pictures, use the following command:
+
+```bash
+python train.py --mode train --dataset RoadImages --dataset-path datasets/roadimages --model crn --checkpoint-path model_checkpoints
+```
