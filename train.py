@@ -50,7 +50,8 @@ def add_argparse_args(parser):
 
 
 def main(args):
-    seed_everything(args.seed, workers=True)
+    if args.seed is not None:
+        seed_everything(args.seed, workers=True)
     torch.autograd.set_detect_anomaly(True)
     
     
@@ -98,10 +99,10 @@ def main(args):
         log_every_n_steps=2,
         check_val_every_n_epoch=1,
         max_steps=args.training_steps,
-        deterministic=True,
+        deterministic=args.seed is not None,
         num_sanity_val_steps=0,
         precision=16,
-        benchmark=False,
+        benchmark=args.seed is None,
     )
     logging.info("Trainer created!")
     
@@ -170,7 +171,7 @@ if __name__ == "__main__":
     parser.add_argument("--cpu", action="store_true", help="force training on cpu")
     parser.add_argument("--auto-set-name", action="store_true", help="sets automatically the name of the experiment")
     parser.add_argument("--wandb", action="store_true", help="activate weights and biases logging")
-    parser.add_argument("--seed", type=int, default=41020, help="seed")
+    parser.add_argument("--seed", type=int, default=None, help="seed")
     parser.add_argument("--wandb-hyperparameter-sweep", action="store_true", help="activate weights and biases hyperparameter sweep")
     Trainer.add_argparse_args(parser)
     add_argparse_args(parser)
