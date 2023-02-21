@@ -1,3 +1,4 @@
+from typing import Dict, Any
 from torchvision import transforms
 import numpy as np
 import wandb
@@ -233,6 +234,16 @@ class CompetitiveReconstructionNetwork(LightningModule):
         difference = torch.abs(image - reconstructed) - 1.0
         return torch.mean(difference, dim=1).unsqueeze(1).repeat(1, 3, 1, 1)
 
+    def on_save_checkpoint(self, checkpoint: Dict[str, Any]) -> None:
+        checkpoint["best_gen"] = self.best_gen
+        checkpoint["best_disc"] = self.best_disc
+        return super().on_save_checkpoint(checkpoint)
+
+    def on_load_checkpoint(self, checkpoint: Dict[str, Any]) -> None:
+        self.best_gen = checkpoint["best_gen"]
+        self.best_disc = checkpoint["best_disc"]
+        return super().on_load_checkpoint(checkpoint)
+
     def validation_step(self, batch, batch_idx):
         image, target = batch
  
@@ -301,7 +312,7 @@ class CompetitiveReconstructionNetwork(LightningModule):
         images = []
         for store in self.store_imgs:
             img, reconstruction = store
-            difference = self.get_difference(img[0].unsqueeze(0), reconstruction[0].unsqueeze(0))
+            difference = self.get_difference_image(img[0].unsqueeze(0), reconstruction[0].unsqueeze(0))
             images.append(self.simple_normalize(img[0]))
             images.append(self.simple_normalize(reconstruction[0]))
             images.append(self.simple_normalize(difference.squeeze()))
@@ -341,17 +352,19 @@ class CompetitiveReconstructionNetwork(LightningModule):
                 for inference_picture in inference_picture_dir.iterdir():
                     inference_picture.unlink()
 
-        self.competitive_units = [unit.to(device) for unit in self.competitive_units]
-        generator, discriminator = self.competitive_units[self.best_gen], self.competitive_units
+        # self.competitive_units = [unit.to(device) for unit in self.competitive_units]
+        generator, discriminator = self.competitive_units[self.best_gen], self.competitive_units[self.best_disc]
+        generator = generator.to(device)
+        discriminator = discriminator.to(device)
         logging.info(f"inference pictures will be saved to {str(inference_path)}")
-        for idx, image in tqdm(enumerate(inference_data), total=len(inference_data)):
+        for idx, (image, file_name) in tqdm(enumerate(inference_data), total=len(inference_data)):
             if len(image) == 2:
                 image = image[0]
-            image = image.to(device)
+            image = image.to(device).unsqueeze(0)
             
             reconstructed = discriminator(generator(image))
             residual_score = self.compute_residual_scores(image, reconstructed).item()
-            difference = self.get_difference(image, reconstructed)
+            difference = self.get_difference_image(image, reconstructed)
 
             grid = make_grid(
                 [
@@ -360,13 +373,13 @@ class CompetitiveReconstructionNetwork(LightningModule):
                     self.simple_normalize(difference.squeeze()),
                 ],
                 nrow=3, normalize=False, padding=2, pad_value=1)
-            save_image(grid, inference_path / f"{idx}.png")
+            save_image(grid, inference_path / f"{file_name}.png")
             
-            rescale = transforms.Resize(inference_data.dataset.orig_image_size[:2])
+            rescale = transforms.Resize(inference_data.orig_image_size[:2])
             difference = rescale(difference.squeeze())
-            save_image(self.simple_normalize(difference[0].unsqueeze(0)), inference_diff / f"{idx}.png", normalize=False)
+            save_image(self.simple_normalize(difference[0].unsqueeze(0)), inference_diff / f"{file_name}.png", normalize=False)
             
-            scores.append(residual_score)
+            scores.append((file_name, residual_score))
         return scores
 
     def configure_optimizers(self):

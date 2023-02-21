@@ -45,11 +45,13 @@ class PanoramaDataset(Dataset):
         print(self.train, len(self.dataset))
         random.shuffle(self.dataset)
         self.images = None
+        self.orig_image_size = []
         if cache_images:
             self.images = []
             logging.info("caching images...")
             for image_file, _ in self.dataset:
                 image = Image.open(image_file).convert("RGB")
+                self.orig_image_size = image.size
                 image = self.transform(image)
                 self.images.append(image)
 
@@ -61,13 +63,11 @@ class PanoramaDataset(Dataset):
             image = Image.open(image_file).convert("RGB")
             image = self.transform(image)
         
+        if self.inference:
+            return image, image_file.stem
         if self.train:
             return image
-        else:
-            if self.inference:
-                return image, image_file.stem
-            else:
-                return image, target
+        return image, target
 
     def __len__(self):
         return len(self.dataset)
@@ -114,11 +114,13 @@ class MVTecDataset(Dataset):
         self.image_files = [image for image in self.image_files if image.suffix == ".png"]
         random.shuffle(self.image_files)
         self.images = None
+        self.orig_image_size = []
         if cache_images:
             self.images = []
             logging.info("caching images...")
             for image_file in self.image_files:
                 image = Image.open(image_file).convert("RGB")
+                self.orig_image_size = image.size
                 image = self.transform(image)
                 self.images.append(image)
 
@@ -130,14 +132,13 @@ class MVTecDataset(Dataset):
             image = Image.open(image_file).convert("RGB")
             image = self.transform(image)
         
+        if self.inference:
+            return image, image_file.stem
         if self.train:
             return image
-        else:
-            if self.inference:
-                return image, image_file.stem
-            else:
-                target = int(image_file.parent.name != "good")
-                return image, target
+
+        target = int(image_file.parent.name != "good")
+        return image, target
 
     def __len__(self):
         return len(self.image_files)
@@ -193,10 +194,11 @@ class RoadImageDataset(Dataset):
         return len(self.files)
 
 class RoadImageDatasetPartition(Dataset):
-    def __init__(self, image_files, train=False, imsize=128):
+    def __init__(self, image_files, train=False, imsize=128, inference=False):
         super().__init__()
         self.train = train
         self.files = image_files
+        self.inference = inference
         print("in partition", "train" if train else "test", "files:", len(self.files))
         self.transform = transforms.Compose([
             transforms.ToTensor(),
@@ -214,7 +216,10 @@ class RoadImageDatasetPartition(Dataset):
             intensity_values = intensity_values[:, :, 0, 0]
             intensity_values = intensity_values[:, :, np.newaxis]
         image_values = np.concatenate([height_values, intensity_values, intensity_values], axis=-1)
+        self.orig_image_size = image_values.shape
         image_values = self.transform(image_values).type(torch.FloatTensor)
+        if self.inference:
+            return image_values, image_files[0].stem
         return image_values if self.train else (image_values, int(image_files[0].parent.parent.name == "bad_ones"))
     
     def __len__(self):
@@ -238,7 +243,7 @@ class AnnotatedRoadImageDataset(Dataset):
             raise RuntimeError(f"directory {str(self.data_dir.resolve())} does not contain any files!")
         random.shuffle(self.files)
         if train:
-            self.dataset = RoadImageDatasetPartition(self.files[:int(self.train_split * len(self.files))], train=True, imsize=imsize)
+            self.dataset = RoadImageDatasetPartition(self.files[:int(self.train_split * len(self.files))], train=True, imsize=imsize, inference=inference)
         else:
             self.data_dir = self.data_dir.parent / "bad_ones"
 
@@ -251,7 +256,7 @@ class AnnotatedRoadImageDataset(Dataset):
             self.test_files = list(zip(sorted(list(height_dir.iterdir())), sorted(list(intensity_dir.iterdir()))))
             self.files = self.files[int(self.train_split * len(self.files)):] + self.test_files
             random.shuffle(self.files)
-            self.dataset = RoadImageDatasetPartition(self.files, train=False, imsize=imsize)
+            self.dataset = RoadImageDatasetPartition(self.files, train=False, imsize=imsize, inference=inference)
         print(train, len(self.dataset))
 
         self.cache = cache
@@ -260,6 +265,8 @@ class AnnotatedRoadImageDataset(Dataset):
         if cache:
             print("caching...")
             self.cached_dataset = [self.dataset[idx] for idx in range(len(self.dataset))]
+        _ = self.dataset[0]
+        self.orig_image_size = self.dataset.orig_image_size
         
     
     def __getitem__(self, idx):

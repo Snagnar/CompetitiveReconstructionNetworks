@@ -58,7 +58,6 @@ def main(args):
     
     set_logging(args.log_file, args.log_level, args.log_stdout)
 
-    logging.info("Training model...")
     data_path = Path(args.dataset_path)
     check_paths(data_path, names=["image directory"])
     if args.dataset == "RoadImages":
@@ -73,7 +72,7 @@ def main(args):
 
     logging.info("Dataset created!")
     train_loader = DataLoader(train_dataset, args.batch_size, num_workers=args.num_workers, pin_memory=True, shuffle=True)
-    val_loader = DataLoader(test_dataset, max(args.batch_size * 4, 128), num_workers=args.num_workers, pin_memory=True, shuffle=False)
+    val_loader = DataLoader(test_dataset, max(args.batch_size, 128), num_workers=args.num_workers, pin_memory=True, shuffle=False)
 
     name = None
     logger = True
@@ -110,6 +109,7 @@ def main(args):
     input_shape = train_dataset[0].unsqueeze(0).shape
     model_class = CompetitiveReconstructionNetwork if args.model == "crn" else DAGAN
     if args.mode == "train":
+        logging.info("training model....")
         if args.model_input is None:
             logging.info("Training new model...")
             model = model_class(input_shape, **vars(args))
@@ -121,13 +121,23 @@ def main(args):
         trainer.fit(model, train_dataloaders=train_loader, val_dataloaders=[val_loader])
     
     elif args.mode == "inference":
+
+        if args.dataset == "RoadImages":
+            train_dataset = AnnotatedRoadImageDataset(data_path, train=True, imsize=args.imsize, inference=True)
+            test_dataset = AnnotatedRoadImageDataset(data_path, train=False, imsize=args.imsize, inference=True)
+        elif args.dataset == "MVTec":
+            train_dataset = MVTecDataset(data_path, train=True, imsize=args.imsize, inference=True)
+            test_dataset = MVTecDataset(data_path, train=False, imsize=args.imsize, inference=True)
+        elif args.dataset == "Panorama":
+            train_dataset = PanoramaDataset(data_path, train=True, inference=True)
+            test_dataset = PanoramaDataset(data_path, train=False, inference=True)
         data_path = Path(args.dataset_path)
         if args.image_output_path is None:
             image_output_path = Path("inference")
-            logging.info(f"using default image output path: {args.image_output_path.resolve()}")
+            logging.info(f"using default image output path: {image_output_path.resolve()}")
         else:
             image_output_path = Path(args.image_output_path)
-            logging.info(f"using specified image output path: {args.image_output_path.resolve()}")
+            logging.info(f"using specified image output path: {image_output_path.resolve()}")
         check_paths(data_path, names=["image directory"])
         if args.anomaly_score_file is None:
             results = image_output_path / "anomaly_scores.csv"
@@ -146,14 +156,12 @@ def main(args):
         logging.info(f"using device: {device}")
         model = model.to(device)
 
-        anomaly_scores = model.inference(val_loader, device, shall_clean=True)
-        anomaly_scores += model.inference(train_loader, device)
+        anomaly_scores = model.inference(test_dataset, device, shall_clean=True)
+        anomaly_scores += model.inference(train_dataset, device)
         with results.open("w") as result_file:
             result_file.write("file_name,anomaly_score\n")
-            for image_nr, score in zip(range(len(test_dataset)), anomaly_scores):
-                result_file.write(f"val-{image_nr},{score}\n")
-            for image_nr, score in zip(range(len(train_dataset)), anomaly_scores[len(test_dataset):]):
-                result_file.write(f"train-{image_nr},{score}\n")
+            for file_name, score in anomaly_scores:
+                result_file.write(f"{file_name},{score}\n")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("Training of Network for Road anomaly detection")
