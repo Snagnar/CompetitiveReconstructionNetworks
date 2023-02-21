@@ -73,11 +73,12 @@ To run inference, you first need to train a model and store checkpoints using th
 ```bash
 python train.py --mode train --dataset RoadImages --dataset-path datasets/roadimages --model crn --checkpoint-path model_checkpoints
 ```
-
 This stores the best CRN state in `model_checkpoints/`.
 
 To calculate anomaly scores for one whole datasets as well as anomaly pictures, use the following command:
-
 ```bash
-python train.py --mode train --dataset RoadImages --dataset-path datasets/roadimages --model crn --checkpoint-path model_checkpoints
+python train.py --mode inference --dataset Panorama --dataset-path datasets/panorama_converted --model crn --model-input "model_checkpoints/last.ckpt" --image-output-path inference_images/
 ```
+For `--model-input` make sure to give the correct path to the last model checkpoint.
+
+To make inference for different datasets, (RoadImages, MVTec or Panorama) adjust the `--dataset` and `--dataset-path` parameters accordingly.
