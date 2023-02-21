@@ -127,7 +127,6 @@ class CompetitiveReconstructionNetwork(LightningModule):
     def on_fit_start(self) -> None:
         self.competitive_units = ModuleList([unit.to(self.device) for unit in self.competitive_units])
 
-        self.discrimination_losses = [a.to(self.device).to(torch.float32) for a in self.discrimination_losses]
         self.feedback_weights = [a.to(self.device).to(torch.float32) for a in self.feedback_weights]
         self.discrimination_weights = [a.to(self.device).to(torch.float32) for a in self.discrimination_weights]
         self.reconstruction_weights = [a.to(self.device).to(torch.float32) for a in self.reconstruction_weights]
@@ -223,8 +222,8 @@ class CompetitiveReconstructionNetwork(LightningModule):
         self.best_gen = np.argmin(self.reconstruction_losses)
         self.best_disc = np.argmax(self.discriminator_losses)
         self.log_dict({
-            "best_gen": self.best_gen,
-            "best_disc": self.best_disc,
+            "best_gen": float(self.best_gen),
+            "best_disc": float(self.best_disc),
         })
     
     def compute_residual_scores(self, image, reconstruction):
@@ -235,9 +234,6 @@ class CompetitiveReconstructionNetwork(LightningModule):
         return torch.mean(difference, dim=1).unsqueeze(1).repeat(1, 3, 1, 1)
 
     def validation_step(self, batch, batch_idx):
-        
-        if self.global_step < self.hparams.warmup_steps:
-            return
         image, target = batch
  
         target = target.to(int)
@@ -254,9 +250,9 @@ class CompetitiveReconstructionNetwork(LightningModule):
         if batch_idx % self.hparams.image_output_interval == 0:
             self.store_images_from_input(
                 image, reconstruction,
-                self.get_difference(image, reconstruction),
+                self.get_difference_image(image, reconstruction),
                 discrimination,
-                self.get_difference(reconstruction, discrimination),
+                self.get_difference_image(reconstruction, discrimination),
                 batch_index=batch_idx,
                 tag=",".join([str(a.item()) for a in target][:5]) + "--" + ",".join([f"{a.item():.2f}" for a in residual_score][:5])
             )
@@ -273,9 +269,6 @@ class CompetitiveReconstructionNetwork(LightningModule):
         return (scores - min_score) / (max_score - min_score)
 
     def validation_epoch_end(self, outputs) -> None:        
-        if self.global_step < self.hparams.warmup_steps:
-            self.log("metrics/max_roc_auc", 0.0, prog_bar=True)
-            return
         score = self.compute_auc(self.targets, self.preds)
         score = max(score, 1.0 - score)
         

@@ -8,7 +8,7 @@ from torch.utils.data import DataLoader
 import logging
 from training.utils import check_paths, set_logging
 from training.dataset import AnnotatedRoadImageDataset, MVTecDataset, PanoramaDataset
-from training.double_skip import RoadAnomalyDetector
+from training.double_skip import DAGAN
 from training.crn import CompetitiveReconstructionNetwork
 from pytorch_lightning.loggers import WandbLogger
 import wandb
@@ -21,23 +21,23 @@ def add_argparse_args(parser):
     model_parser.add_argument("--adversarial-loss-weight", type=float, default=1.0)
     model_parser.add_argument("--discriminator-reconstruction-loss-weight", type=float, default=1.0)
 
-    model_parser.add_argument("--reconstruction-weight", type=float, default=1.0)
+    model_parser.add_argument("--reconstruction-weight", type=float, default=0.5)
     model_parser.add_argument("--network-depth", type=int, default=4)
     model_parser.add_argument("--generator-network-depth", type=int, default=4)
     model_parser.add_argument("--imsize", type=int, default=128)
     model_parser.add_argument("--feedback-weight", type=float, default=1.0)
-    model_parser.add_argument("--discrimination-weight", type=float, default=1.0)
-    model_parser.add_argument("--improved", type=bool, default=False,
+    model_parser.add_argument("--discrimination-weight", type=float, default=2.0)
+    model_parser.add_argument("--improved", type=bool, default=True,
                                 help="if activated, the crns use the improved unet version.")
     model_parser.add_argument("--use-dropout", type=bool, default=False,
                                 help="if activated, competitive units are trained on differing data samples.")
     model_parser.add_argument("--image-output-interval", type=float, default=10)
     model_parser.add_argument("--lr-scheduler", type=str,
                         help="name of the lr scheduler to use. default to none")
-    model_parser.add_argument("--norm", type=str, default="instance",
+    model_parser.add_argument("--norm", type=str, default="batch",
                         help="name of the lr scheduler to use. default to none")
-    model_parser.add_argument("--lr", type=float, default=0.1,
-                        help="initial learning rate (default: 0.1)")
+    model_parser.add_argument("--lr", type=float, default=0.0001,
+                        help="initial learning rate (default: 0.0001)")
     model_parser.add_argument('--lr-factor', default=0.1, type=float,
                         help='learning rate decay ratio. this is used only by the step and exponential lr scheduler')
     model_parser.add_argument('--lr-steps', nargs="*", default=[30, 60, 90],
@@ -82,7 +82,6 @@ def main(args):
         wandb.init(config=args, name=name)
         wandb.config.update({"run_command": " ".join(sys.argv)})
 
-    args.training_steps += args.warmup_steps
     epochs = args.epochs if args.epochs is not None else int(args.training_steps / (len(train_dataset) / args.batch_size)) + 1
     args.epochs = epochs
     logging.info("creating trainer....")
@@ -95,7 +94,7 @@ def main(args):
         enable_checkpointing=args.checkpoint_path is not None,
         callbacks = [
             ModelCheckpoint(dirpath=args.checkpoint_path, save_last=False, mode="max", monitor="metrics/max_roc_auc", save_top_k=1),
-        ],
+        ] if args.checkpoint_path is not None else [],
         log_every_n_steps=2,
         check_val_every_n_epoch=1,
         max_steps=args.training_steps,
@@ -106,9 +105,8 @@ def main(args):
     )
     logging.info("Trainer created!")
     
-    example_input = iter(train_loader).next()
-    input_shape = example_input.shape
-    model_class = CompetitiveReconstructionNetwork if args.model == "crn" else RoadAnomalyDetector
+    input_shape = train_dataset[0].unsqueeze(0).shape
+    model_class = CompetitiveReconstructionNetwork if args.model == "crn" else DAGAN
     if args.mode == "train":
         if args.model_input is None:
             logging.info("Training new model...")
@@ -163,8 +161,8 @@ if __name__ == "__main__":
     parser.add_argument("--training-steps", type=int, required=False, default=20000, help="number of steps to train")
     parser.add_argument("--epochs", type=int, required=False, help="number of epochs")
     parser.add_argument("--batch-size", type=int, required=False, default=64)
-    parser.add_argument("--num-competitive-units", type=int, default=3, required=False, help="number of competitive units used for crn")
-    parser.add_argument("--num-workers", type=int, required=False, default=8, help="number of workers for dataloader")
+    parser.add_argument("--num-competitive-units", type=int, default=12, required=False, help="number of competitive units used for crn")
+    parser.add_argument("--num-workers", type=int, required=False, default=0, help="number of workers for dataloader")
     parser.add_argument("--dataset-path", type=str, required=False, help="path to dataset")
     parser.add_argument("--model-input", type=str, required=False, help="path to model (for inference)")
     parser.add_argument("--dataset", type=str, choices=["RoadImages", "MVTec", "Panorama"], required=False, help="name of dataset")

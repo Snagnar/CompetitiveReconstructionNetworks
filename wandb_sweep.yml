@@ -1,0 +1,39 @@
+command:
+  - ${env}
+  - ${interpreter}
+  - ${program}
+  - --wandb
+  - --mode
+  - train
+  - --training-steps
+  - "20000"
+  - --model
+  - crn
+  - --dataset
+  - MVTec
+  - --auto-set-name
+  - ${args}
+method: grid
+metric:
+  goal: maximize
+  name: metrics/max_a_priori
+name: crn test all with seeds
+parameters:
+  dataset-path:
+    values:
+      - datasets/mvtec/bottle
+      - datasets/mvtec/cable
+      - datasets/mvtec/capsule
+      - datasets/mvtec/carpet
+      - datasets/mvtec/grid
+      - datasets/mvtec/hazelnut
+      - datasets/mvtec/leather
+      - datasets/mvtec/metal_nut
+      - datasets/mvtec/pill
+      - datasets/mvtec/screw
+      - datasets/mvtec/tile
+      - datasets/mvtec/toothbrush
+      - datasets/mvtec/transistor
+      - datasets/mvtec/wood
+      - datasets/mvtec/zipper
+program: train.py

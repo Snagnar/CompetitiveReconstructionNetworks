@@ -4,3 +4,4 @@ imageio
 pytorch_lightning
 wandb
 tqdm
+scikit-learn

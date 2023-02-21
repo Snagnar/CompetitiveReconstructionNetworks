@@ -36,9 +36,9 @@ Extract the tarfile e.g. to a directory called `mvtec/`.
 Download the zip files from the following url:
 
 ```
-https://boxup.uni-potsdam.de/s/qRsJ9bYZCn4qCjX
+https://boxup.uni-potsdam.de/s/4WZTcj3yi25iXYK
 ```
-using the following password: *xcnxAE7YFdseZ9M* and extract them e.g. to a directory called `datasets/`.
+using the following password: *itJJag8WSxHAM9i* and extract them e.g. to a directory called `datasets/`.
 
 The `roadimages.zip` contains the dataset with images extracted from 3D lidar scans of streets in the town of essen.
 The `panorama_images.zip` file contains the dataset of hand labled panorama images obtained from cameras mounted on the scanning vehicles.
