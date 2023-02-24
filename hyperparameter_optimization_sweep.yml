@@ -1,0 +1,45 @@
+program: train.py
+name: "final parameter sweep cable"
+command:
+  - ${env}
+  - ${interpreter}
+  - ${program}
+  - "--wandb" 
+  - "--mode" 
+  - "train" 
+  - "--training-steps" 
+  - "10000" 
+  - "--model" 
+  - "crn" 
+  - "--dataset" 
+  - "MVTec" 
+  - "--image-output-path" 
+  - "data/cables" 
+  - "--num-workers" 
+  - "0" 
+  - "--improved=1" 
+  - "--norm=batch"
+  - --imsize=128
+  - "--dataset-path=mvtec/cable"
+  - ${args}
+method: bayes
+metric:
+  name: metrics/max_a_priori
+  goal: maximize
+parameters:
+  lr:
+    values: ["0.01", "0.001", "0.0001", "0.00001"]
+  lr-scheduler:
+    values: ["cosine", ""]
+  num-competitive-units:
+    values: ["10", "12", "14", "16"]
+  optimizer:
+    values: ["adam", "radam", "adamw", "nadam", "rmsprop"]
+  reconstruction-weight:
+    values: ["0.25", "0.5", "1.0", "2.0"]
+  discrimination-weight:
+    values: ["0.25", "0.5", "1.0", "2.0"]
+  feedback-weight:
+    values: ["0.25", "0.5", "1.0", "2.0"]
+  batch-size:
+    values: [32, 64, 128]

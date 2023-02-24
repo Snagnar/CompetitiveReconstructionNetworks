@@ -84,3 +84,17 @@ For `--model-input` make sure to give the correct path to the last model checkpo
 To make inference for different datasets, (RoadImages, MVTec or Panorama) adjust the `--dataset` and `--dataset-path` parameters accordingly.
 
 After inference, you can look at the pictures generated in the `diff` directory to make a qualitative evaluation of the results.
+
+# Hyperparameter Optimization
+
+The `wandb` sweep configuration used in the paper to optain an optimized set of hyperparameters can be found in the `hyperparameter_optimization_sweep.yml`.
+To start a hyperparameter optimization run, use the following command:
+```
+wandb sweep hyperparameter_optimization_sweep.yml
+```
+Note: you need a W&B account for this.
+This gives you an `wandb agent ...` command that you can execute on a machine equipped with suitable hardware (i.e. a graphics card with 12GB+ vram). The
+agent will then test different hyperparameter configurations using the bayes optimization algorithm. You can start multiple agents on different machines.
+
+You can also use the `wandb_sweep.yml` file to simply test all categories of the MVTec dataset in a row. For this, simply swap the sweep configuration
+filename above with `wandb_sweep.yml`.
