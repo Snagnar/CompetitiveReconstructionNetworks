@@ -82,3 +82,5 @@ python train.py --mode inference --dataset Panorama --dataset-path datasets/pano
 For `--model-input` make sure to give the correct path to the last model checkpoint.
 
 To make inference for different datasets, (RoadImages, MVTec or Panorama) adjust the `--dataset` and `--dataset-path` parameters accordingly.
+
+After inference, you can look at the pictures generated in the `diff` directory to make a qualitative evaluation of the results.
