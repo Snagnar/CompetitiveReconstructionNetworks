@@ -19,6 +19,8 @@ You can then install the requirements for this repository using pip and the foll
 pip install -r requirements.txt
 ```
 
+For this repository it is highly recommended to use a graphics card with at least 12 GB of vram. If your graphics card does not have enough memory, you might have to reduce the number of competitive units in the commands used below using the `--num-competitive-units` parameter. If you are using a graphics card, you also need to install `cuda>10.0` together with pytorch, e.g. `pip install torch==1.12.1+cu116` if you have `cuda` 11.6 installed. You can also train using a CPU but be aware that this is VERY slow (>10 minutes per epoch).
+
 # Download of Datasets:
 
 ## MVTec AD

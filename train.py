@@ -1,3 +1,4 @@
+import os
 import sys
 import argparse
 import torch
@@ -87,8 +88,8 @@ def main(args):
     args.epochs = epochs
     logging.info("creating trainer....")
     trainer = Trainer(
-        accelerator="gpu" if not args.cpu else "cpu",
-        gpus=torch.cuda.device_count() if not args.cpu else None,
+        accelerator="gpu" if (not args.cpu and torch.cuda.device_count() > 0) else "cpu",
+        devices=max(torch.cuda.device_count(), 1) if not args.cpu else os.cpu_count(),
         max_epochs=epochs,
         auto_select_gpus=True,
         logger=logger,
