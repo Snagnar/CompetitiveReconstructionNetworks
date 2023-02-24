@@ -16,8 +16,8 @@ command:
 method: grid
 metric:
   goal: maximize
-  name: metrics/max_a_priori
-name: crn test all with seeds
+  name: metrics/max_roc_auc
+name: crn test all mvtec
 parameters:
   dataset-path:
     values:
