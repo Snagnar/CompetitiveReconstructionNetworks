@@ -1,5 +1,6 @@
 # CompetitiveReconstructionNetworks
-Implementation of the CRN paper
+
+Implementation of the anomaly detection technique described in "Detecting Road Damages in Mobile Mapping Point Clouds using Competitive Reconstruction Networks".
 
 # install the requirements
 
