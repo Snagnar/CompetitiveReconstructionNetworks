@@ -1,7 +1,7 @@
-torch
-torchvision
-imageio
-pytorch_lightning
-wandb
-tqdm
-scikit-learn
+torch==1.13.1
+torchvision==0.14.1
+imageio==2.25.1
+pytorch_lightning==1.9.2
+wandb==0.13.10
+tqdm==4.64.1
+scikit-learn==1.2.1
