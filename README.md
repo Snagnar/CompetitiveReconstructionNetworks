@@ -1,5 +1,6 @@
 # CompetitiveReconstructionNetworks
-Implementation of the CRN paper
+
+Implementation of the anomaly detection technique described in "Detecting Road Damages in Mobile Mapping Point Clouds using Competitive Reconstruction Networks".
 
 # install the requirements
 
@@ -38,9 +39,9 @@ Extract the tarfile e.g. to a directory called `mvtec/`.
 Download the zip files from the following url:
 
 ```
-https://boxup.uni-potsdam.de/s/4WZTcj3yi25iXYK
+https://doi.org/10.5281/zenodo.7681876
 ```
-using the following password: *itJJag8WSxHAM9i* and extract them e.g. to a directory called `datasets/`.
+and extract them e.g. to a directory called `datasets/`.
 
 The `roadimages.zip` contains the dataset with images extracted from 3D lidar scans of streets in the town of essen.
 The `panorama_images.zip` file contains the dataset of hand labled panorama images obtained from cameras mounted on the scanning vehicles.
