@@ -125,12 +125,12 @@ class DAGAN(LightningModule):
                 "gconloss": generator_reconstruction_loss.detach(),
                 "darl": discriminator_reconstruction_loss.detach(),
                 "dafl": discriminator_adversarial_loss.detach(),
-            })
+            }, sync_dist=True)
         self.log_dict({
             "loss": (generator_loss.detach() + discriminator_loss.detach()),
             "gloss": generator_loss.detach(),
             "dloss": discriminator_loss.detach(),
-        }, prog_bar=False)
+        }, prog_bar=False, sync_dist=True)
     
     def on_epoch_end(self) -> None:
         self.store_images()
@@ -179,14 +179,14 @@ class DAGAN(LightningModule):
         self.log_dict({
             f"metrics/roc_auc_function": score,
             f"metrics/test_loss": self.evaluation_loss_function(torch.Tensor(self.targets), torch.Tensor(predictions))
-        })
+        }, sync_dist=True)
         wandb.log({
             f"debug/prediction_scores": wandb.Histogram(predictions),
         })
         
         self.log_dict({
             "metrics/max_roc_auc": self.max_auc_roc,
-        }, prog_bar=True)
+        }, prog_bar=True, sync_dist=True)
         self.preds = []
         self.targets = []
         

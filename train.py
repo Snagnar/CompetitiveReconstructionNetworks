@@ -1,4 +1,5 @@
 import os
+import numpy as np
 import sys
 import argparse
 import torch
@@ -23,7 +24,7 @@ def add_argparse_args(parser):
     model_parser.add_argument("--discriminator-reconstruction-loss-weight", type=float, default=1.0)
 
     model_parser.add_argument("--reconstruction-weight", type=float, default=0.5)
-    model_parser.add_argument("--network-depth", type=int, default=4)
+    model_parser.add_argument("--max-network-depth", type=int, default=8)
     model_parser.add_argument("--generator-network-depth", type=int, default=4)
     model_parser.add_argument("--imsize", type=int, default=128)
     model_parser.add_argument("--feedback-weight", type=float, default=1.0)
@@ -56,6 +57,13 @@ def main(args):
         seed_everything(args.seed, workers=True)
     torch.autograd.set_detect_anomaly(True)
     
+    if args.demo:
+        logging.warning("DEMO MODE ACTIVATED! training with batch size 2 for 100 training steps and image size 32x32. Networks have a maximum depth of 3 and only 3 competitive units are used.")
+        args.batch_size = 1
+        args.training_steps = 50
+        args.max_network_depth = 2
+        args.num_competitive_units = 3
+        args.imsize = 32
     
     set_logging(args.log_file, args.log_level, args.log_stdout)
 
@@ -70,10 +78,20 @@ def main(args):
     elif args.dataset == "Panorama":
         train_dataset = PanoramaDataset(data_path, train=True)
         test_dataset = PanoramaDataset(data_path, train=False)
+    
+    if args.demo:
+        train_indices = np.random.permutation(len(train_dataset))[:50]
+        test_indices = np.random.permutation(len(test_dataset))[:50]
+        # print(test_indices)
+        # for _ in range(len(train_dataset)):
+        #     rand_idx = np.random.randint(0, len(train_dataset))
+
+        train_dataset = [train_dataset[i] for i in train_indices]
+        test_dataset = [test_dataset[i] for i in test_indices]
 
     logging.info("Dataset created!")
-    train_loader = DataLoader(train_dataset, args.batch_size, num_workers=args.num_workers, pin_memory=True, shuffle=True)
-    val_loader = DataLoader(test_dataset, max(args.batch_size, 128), num_workers=args.num_workers, pin_memory=True, shuffle=False)
+    train_loader = DataLoader(train_dataset, args.batch_size, num_workers=args.num_workers, pin_memory=True, shuffle=True, persistent_workers=True)
+    val_loader = DataLoader(test_dataset, max(args.batch_size, 128 * int(not args.demo)), num_workers=args.num_workers, pin_memory=True, shuffle=False, persistent_workers=True)
 
     name = None
     logger = True
@@ -89,7 +107,7 @@ def main(args):
     logging.info("creating trainer....")
     trainer = Trainer(
         accelerator="gpu" if (not args.cpu and torch.cuda.device_count() > 0) else "cpu",
-        devices=max(torch.cuda.device_count(), 1) if not args.cpu else os.cpu_count(),
+        devices=max(torch.cuda.device_count(), 2) if not args.cpu else os.cpu_count() // 4,
         max_epochs=epochs,
         auto_select_gpus=True,
         logger=logger,
@@ -97,8 +115,8 @@ def main(args):
         callbacks = [
             ModelCheckpoint(dirpath=args.checkpoint_path, save_last=False, mode="max", monitor="metrics/max_roc_auc", save_top_k=1),
         ] if args.checkpoint_path is not None else [],
-        log_every_n_steps=2,
         check_val_every_n_epoch=1,
+        log_every_n_steps=1,
         max_steps=args.training_steps,
         deterministic=args.seed is not None,
         num_sanity_val_steps=0,
@@ -194,6 +212,7 @@ if __name__ == "__main__":
     parser.add_argument("--wandb", action="store_true", help="activate weights and biases logging")
     parser.add_argument("--seed", type=int, default=None, help="seed")
     parser.add_argument("--wandb-hyperparameter-sweep", action="store_true", help="activate weights and biases hyperparameter sweep")
+    parser.add_argument("--demo", action="store_true", help="activates demo mode, which will train the networks with a fraction of the data")
     Trainer.add_argparse_args(parser)
     add_argparse_args(parser)
     args = parser.parse_args()

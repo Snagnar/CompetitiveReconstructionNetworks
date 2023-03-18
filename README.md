@@ -31,8 +31,13 @@ Download the zip file from the following url:
 ```
 https://www.mydrive.ch/shares/38536/3830184030e49fe74747669442f0f282/download/420938113-1629952094/mvtec_anomaly_detection.tar.xz
 ```
+The dataset has an extracted size of roughly 5 gb.
+Extract the tarfile e.g. to a directory called `datasets/mvtec/`.
 
-Extract the tarfile e.g. to a directory called `mvtec/`.
+Alternatively, if the link is broken, use the following link to apply for a new download link:
+```
+https://www.mvtec.com/company/research/datasets/mvtec-ad/
+```
 
 ## Panorama and Road Images
 
@@ -41,7 +46,7 @@ Download the zip files from the following url:
 ```
 https://doi.org/10.5281/zenodo.7681876
 ```
-and extract them e.g. to a directory called `datasets/`.
+and extract them e.g. to a directory called `datasets/`. The two datasets have a combined size of roughly 280 mb.
 
 The `roadimages.zip` contains the dataset with images extracted from 3D lidar scans of streets in the town of essen.
 The `panorama_images.zip` file contains the dataset of hand labled panorama images obtained from cameras mounted on the scanning vehicles.
@@ -50,24 +55,33 @@ The `panorama_images.zip` file contains the dataset of hand labled panorama imag
 
 To evaluate the CRN on MVTec, you can use the following command:
 ```bash
-python train.py --mode train --training-steps 20000 --model crn --dataset MVTec --auto-set-name --dataset-path=datasets/mvtec/cable
+python train.py --mode train --training-steps 20000 --model crn --dataset MVTec --auto-set-name --dataset-path=datasets/mvtec/cable --seed 41020
 ```
 You can substitute the dataset path to test out different categories. You can log metrics to `Weights & Biases` by adding the `--wandb` flag. However you need a W&B account and an API key for this.
 
 To evaluate CRN on the annotated Panorama images, use the following command:
 ```bash
-python train.py --mode train --dataset Panorama --dataset-path datasets/panorama --model crn
+python train.py --mode train --dataset Panorama --dataset-path datasets/panorama --model crn --seed 41020
 ```
 
 
 To evaluate CRN on the annotated road images, use the following command:
 ```bash
-python train.py --mode train --dataset RoadImages --dataset-path datasets/roadimages --model crn
+python train.py --mode train --dataset RoadImages --dataset-path datasets/roadimages --model crn --seed 41020
 ```
 
 To view a full list of parameters, including e.g. the number of competitive units, optimizer or loss weights, run:
 ```
 python train.py --help
+```
+
+## Demo mode:
+
+As the hardware requirements to run the experiments are rather high (the results of the papers were obtained using a A100 graphics card), you can enable demo mode with the flag `--demo`. This sets the batch size to 2, the maximum network depth to 3, the image size used for training to 32x32, the number of competitive units to 3 and the maximum number of training steps to 50. 
+
+Using only a an intel i7 cpu, the following command took roughly 20 min. The obtained maximum roc auc was 0.78.
+```
+python train.py --mode train --dataset RoadImages --dataset-path datasets/roadimages --model crn --demo --num-workers 4 --cpu --seed 41020
 ```
 
 # Inference

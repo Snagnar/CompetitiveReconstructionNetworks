@@ -33,7 +33,7 @@ class CompetitiveReconstructionNetwork(LightningModule):
             epochs: int,
             image_output_path: str,
             num_competitive_units: int,
-            network_depth: int,
+            max_network_depth: int,
             feedback_weight: float,
             reconstruction_weight: float,
             discrimination_weight: float,
@@ -53,7 +53,7 @@ class CompetitiveReconstructionNetwork(LightningModule):
         
         self.train_start_time = time.time()
 
-        network_depth = int(math.log2(input_shape[2]))
+        network_depth = min(int(math.log2(input_shape[2])), max_network_depth)
         logging.info(f"using network depth {network_depth}")
         if wandb.run is not None:
             wandb.config.update({"network_depth": network_depth}, allow_val_change=True)
@@ -101,7 +101,7 @@ class CompetitiveReconstructionNetwork(LightningModule):
         for unit in self.competitive_units:
             self.init_weights(unit, init_type="kaiming")
         
-        self.log_dict({"metrics/traintime": time.time() - self.train_start_time})
+        self.log_dict({"metrics/traintime": time.time() - self.train_start_time}, sync_dist=True)
         self.competitive_units = ModuleList(self.competitive_units)
     
     def init_weights(self, net, init_type='normal', gain=0.02):
@@ -142,7 +142,7 @@ class CompetitiveReconstructionNetwork(LightningModule):
                         scheduler.step()
             else:
                 c_lr_schedulers.step()
-        self.log_dict({"metrics/traintime": time.time() - self.train_start_time})
+        self.log_dict({"metrics/traintime": time.time() - self.train_start_time}, sync_dist=True)
     
     def on_train_start(self) -> None:
         self.reconstructions = []
@@ -284,11 +284,11 @@ class CompetitiveReconstructionNetwork(LightningModule):
         score = max(score, 1.0 - score)
         
         self.max_roc_auc = max(self.max_roc_auc, score)
-        self.log("metrics/max_roc_auc", self.max_roc_auc, prog_bar=True)
+        self.log("metrics/max_roc_auc", self.max_roc_auc, prog_bar=True, sync_dist=True)
         self.log_dict({
             "metrics/score": score,
             "metrics/traintime": time.time() - self.train_start_time,
-        })
+        }, sync_dist=True)
         gc.collect()
 
         self.preds = torch.Tensor([]).to(self.device)

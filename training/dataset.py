@@ -13,7 +13,7 @@ from utils.utils import check_paths
 
 class PanoramaDataset(Dataset):
     
-    def __init__(self, data_dir, inference=False, train=True, cache_images=True, train_split=0.7):
+    def __init__(self, data_dir, inference=False, train=True, cache_images=True, train_split=0.7, imsize=128):
         self.data_dir = Path(data_dir)
         check_paths(self.data_dir)
         if not self.data_dir.is_dir():
@@ -22,7 +22,7 @@ class PanoramaDataset(Dataset):
         self.transform = transforms.Compose(
             [
                 transforms.ToTensor(),
-                transforms.Resize((128, 128)),
+                transforms.Resize((imsize, imsize)),
                 transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5]),
             ]
         )
