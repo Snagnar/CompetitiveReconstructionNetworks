@@ -104,7 +104,7 @@ This stores the best CRN state in `model_checkpoints/`.
 
 To calculate anomaly scores for one whole datasets as well as anomaly pictures, use the following command:
 ```bash
-python train.py --mode inference --dataset Panorama --dataset-path datasets/panorama_converted --model crn --model-input "model_checkpoints/last.ckpt" --image-output-path inference_images/
+python train.py --mode inference --dataset RoadImages --dataset-path datasets/roadimages --model crn --model-input "model_checkpoints/last.ckpt" --image-output-path inference_images/
 ```
 For `--model-input` make sure to give the correct path to the last model checkpoint.
 In our setup this step took about 10 min.
