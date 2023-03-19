@@ -82,10 +82,6 @@ def main(args):
     if args.demo:
         train_indices = np.random.permutation(len(train_dataset))[:50]
         test_indices = np.random.permutation(len(test_dataset))[:50]
-        # print(test_indices)
-        # for _ in range(len(train_dataset)):
-        #     rand_idx = np.random.randint(0, len(train_dataset))
-
         train_dataset = [train_dataset[i] for i in train_indices]
         test_dataset = [test_dataset[i] for i in test_indices]
 
