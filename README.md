@@ -53,23 +53,26 @@ The `panorama_images.zip` file contains the dataset of hand labled panorama imag
 
 # Running experiments
 
+The experiments in the paper were conducted on a machine with 8 CPU cores and an A100 NVIDIA graphics card.
+
 To evaluate the CRN on MVTec, you can use the following command:
 ```bash
 python train.py --mode train --training-steps 20000 --model crn --dataset MVTec --dataset-path=datasets/mvtec/cable --seed 41020
 ```
-To reproduce Table 1 of the paper substitute the dataset path to test the 15 different categories of the MVTec dataset. You can log metrics to `Weights & Biases` by adding the `--wandb` flag. However you need a W&B account and an API key for this.
+To reproduce Table 1 of the paper substitute the dataset path to test the 15 different categories of the MVTec dataset. You can log metrics to `Weights & Biases` by adding the `--wandb` flag. However you need a W&B account and an API key for this. In our setup, average run time for a MVTec category was about 3.5 hours.
 
 To evaluate CRN on the annotated Panorama images and reproduce Table 2, use the following command:
 ```bash
 python train.py --mode train --training-steps 20000 --dataset Panorama --dataset-path datasets/panorama --model crn --seed 41020
 ```
 This repository also contains the code for the DAGAN [1] model, so in order to reproduce the results for the DAGAN model in the same table, simply use the `--model dagan` option.
+In our setup, average run time for the panorama dataset was about 2 hours 20 minutes.
 
 To evaluate CRN on the annotated road images and reproduce Table 3, use the following command:
 ```bash
 python train.py --mode train --training-steps 20000 --dataset RoadImages --dataset-path datasets/roadimages --model crn --seed 41020
 ```
-In order to reproduce the results for the DAGAN model in the same table, again, just use the `--model dagan` option.
+In order to reproduce the results for the DAGAN model in the same table, again, just use the `--model dagan` option. In our setup, average run time for the road images dataset was about 2.5 hours.
 
 To view a full list of parameters, including e.g. the number of competitive units, optimizer or loss weights, run:
 ```
