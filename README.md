@@ -107,6 +107,7 @@ To calculate anomaly scores for one whole datasets as well as anomaly pictures, 
 python train.py --mode inference --dataset Panorama --dataset-path datasets/panorama_converted --model crn --model-input "model_checkpoints/last.ckpt" --image-output-path inference_images/
 ```
 For `--model-input` make sure to give the correct path to the last model checkpoint.
+In our setup this step took about 10 min.
 
 To make inference for different datasets, (RoadImages, MVTec or Panorama) adjust the `--dataset` and `--dataset-path` parameters accordingly.
 
