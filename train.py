@@ -90,8 +90,8 @@ def main(args):
         test_dataset = [test_dataset[i] for i in test_indices]
 
     logging.info("Dataset created!")
-    train_loader = DataLoader(train_dataset, args.batch_size, num_workers=args.num_workers, pin_memory=True, shuffle=True, persistent_workers=True)
-    val_loader = DataLoader(test_dataset, max(args.batch_size, 128 * int(not args.demo)), num_workers=args.num_workers, pin_memory=True, shuffle=False, persistent_workers=True)
+    train_loader = DataLoader(train_dataset, args.batch_size, num_workers=args.num_workers, pin_memory=True, shuffle=True, persistent_workers=args.num_workers)
+    val_loader = DataLoader(test_dataset, max(args.batch_size, 128 * int(not args.demo)), num_workers=args.num_workers, pin_memory=True, shuffle=False, persistent_workers=args.num_workers)
 
     name = None
     logger = True

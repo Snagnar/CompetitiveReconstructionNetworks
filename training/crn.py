@@ -225,7 +225,7 @@ class CompetitiveReconstructionNetwork(LightningModule):
         self.log_dict({
             "best_gen": float(self.best_gen),
             "best_disc": float(self.best_disc),
-        })
+        }, sync_dist=True)
     
     def compute_residual_scores(self, image, reconstruction):
         return torch.mean(torch.abs(image - reconstruction), dim=[1, 2, 3])
