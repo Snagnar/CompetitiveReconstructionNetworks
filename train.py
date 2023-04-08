@@ -12,7 +12,7 @@ from training.utils import check_paths, set_logging
 from training.dataset import AnnotatedRoadImageDataset, MVTecDataset, PanoramaDataset
 from training.double_skip import DAGAN
 from training.crn import CompetitiveReconstructionNetwork
-from pytorch_lightning.loggers import WandbLogger
+from pytorch_lightning.loggers import WandbLogger, CSVLogger
 import wandb
 
 
@@ -48,24 +48,27 @@ def add_argparse_args(parser):
                         help='momentum value for optimizer, default is 0.9. only used for sgd optimizer')
     model_parser.add_argument('--optimizer', type=str, default="adam",
                         help='the optimizer to use. default is adam.')
-    model_parser.add_argument("--image-output-path", type=str, default=None)
+    model_parser.add_argument("--image-output-path", type=str, default="output_images")
+    model_parser.add_argument("--log-dir", type=str, default="logged_metrics")
     model_parser.add_argument("--anomaly-score-file", type=str, default=None)
 
 
 def main(args):
+    set_logging(args.log_file, args.log_level, args.log_stdout)
+    
     if args.seed is not None:
+        logging.info(f"setting seed to {args.seed}")
         seed_everything(args.seed, workers=True)
     torch.autograd.set_detect_anomaly(True)
     
     if args.demo:
-        logging.warning("DEMO MODE ACTIVATED! training with batch size 2 for 100 training steps and image size 32x32. Networks have a maximum depth of 3 and only 3 competitive units are used.")
+        logging.warning("DEMO MODE ACTIVATED! training with batch size 2 for 50 training steps and image size 32x32. Networks have a maximum depth of 3 and only 3 competitive units are used.")
         args.batch_size = 1
-        args.training_steps = 50
+        args.training_steps = 100  # since each CU is optimized twice per step, this is 50 steps
         args.max_network_depth = 2
         args.num_competitive_units = 3
         args.imsize = 32
     
-    set_logging(args.log_file, args.log_level, args.log_stdout)
 
     data_path = Path(args.dataset_path)
     check_paths(data_path, names=["image directory"])
@@ -97,13 +100,16 @@ def main(args):
         logger = WandbLogger(project="road-quality-evaluation", log_model=False, name=name)
         wandb.init(config=args, name=name)
         wandb.config.update({"run_command": " ".join(sys.argv)})
+    else:
+        # create csv logger
+        logger = CSVLogger(save_dir=args.log_dir)
 
     epochs = args.epochs if args.epochs is not None else int(args.training_steps / (len(train_dataset) / args.batch_size)) + 1
     args.epochs = epochs
-    logging.info("creating trainer....")
+    logging.info(f"creating trainer....")
     trainer = Trainer(
         accelerator="gpu" if (not args.cpu and torch.cuda.device_count() > 0) else "cpu",
-        devices=max(torch.cuda.device_count(), 2) if not args.cpu else os.cpu_count() // 4,
+        devices=max(torch.cuda.device_count(), 2) if not args.cpu else 1,
         max_epochs=epochs,
         auto_select_gpus=True,
         logger=logger,

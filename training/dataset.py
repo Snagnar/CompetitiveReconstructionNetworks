@@ -32,8 +32,8 @@ class PanoramaDataset(Dataset):
         self.good_ones = []
         self.bad_ones = []
         
-        self.good_ones = list((self.data_dir / "good_ones").iterdir())
-        self.bad_ones = list((self.data_dir / "bad_ones").iterdir())
+        self.good_ones = sorted(list((self.data_dir / "good_ones").iterdir()))
+        self.bad_ones = sorted(list((self.data_dir / "bad_ones").iterdir()))
         print("num good panorama images:", len(self.good_ones), "bad ones:", len(self.bad_ones))
         split_idx = int(len(self.good_ones) * train_split)
         if self.train:
@@ -43,7 +43,7 @@ class PanoramaDataset(Dataset):
             self.dataset += [(image_file, 0) for image_file in self.good_ones[split_idx:]]
             
         print(self.train, len(self.dataset))
-        random.shuffle(self.dataset)
+        # random.shuffle(self.dataset)
         self.images = None
         self.orig_image_size = []
         if cache_images:
@@ -91,11 +91,11 @@ class MVTecDataset(Dataset):
         self.cache_images = cache_images
         self.inference = inference
         if self.train:
-            self.image_files = list((self.data_dir / "train" / "good").iterdir())
+            self.image_files = sorted(list((self.data_dir / "train" / "good").iterdir()))
         else:
             self.image_files = []
             for directory in (self.data_dir / "test").iterdir():
-                self.image_files += list(directory.iterdir())
+                self.image_files += sorted(list(directory.iterdir()))
             if include_random_images:
                 other_cats = list(self.data_dir.parent.iterdir())
                 random_files = []
@@ -112,7 +112,7 @@ class MVTecDataset(Dataset):
                 
         self.image_files = sorted(self.image_files)
         self.image_files = [image for image in self.image_files if image.suffix == ".png"]
-        random.shuffle(self.image_files)
+        # random.shuffle(self.image_files)
         self.images = None
         self.orig_image_size = []
         if cache_images:
@@ -241,7 +241,7 @@ class AnnotatedRoadImageDataset(Dataset):
 
         if len(self.files) == 0:
             raise RuntimeError(f"directory {str(self.data_dir.resolve())} does not contain any files!")
-        random.shuffle(self.files)
+        # random.shuffle(self.files)
         if train:
             self.dataset = RoadImageDatasetPartition(self.files[:int(self.train_split * len(self.files))], train=True, imsize=imsize, inference=inference)
         else:
@@ -255,7 +255,7 @@ class AnnotatedRoadImageDataset(Dataset):
             self.inference = inference                                                                                                                                                             
             self.test_files = list(zip(sorted(list(height_dir.iterdir())), sorted(list(intensity_dir.iterdir()))))
             self.files = self.files[int(self.train_split * len(self.files)):] + self.test_files
-            random.shuffle(self.files)
+            # random.shuffle(self.files)
             self.dataset = RoadImageDatasetPartition(self.files, train=False, imsize=imsize, inference=inference)
         print(train, len(self.dataset))
 

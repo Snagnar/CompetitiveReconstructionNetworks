@@ -59,12 +59,16 @@ To evaluate the CRN on MVTec, you can use the following command:
 ```bash
 python train.py --mode train --training-steps 20000 --model crn --dataset MVTec --dataset-path=datasets/mvtec/cable --seed 41020
 ```
+The maximum obtained roc auc value is shown in the command line in the progress bar. It is also logged in a directory called `logged_metrics`. There a new subdirectory `version_n` is created with `n` being the largest number in the directory for the newest run being logged there. This subdirectory
+contains a metrics.csv, which contains the `metrics/max_roc_auc` when it was logged (this value is not logged in rows before it was first logged, the last row of the csv file contains the final max roc auc score).
 To reproduce Table 1 of the paper substitute the dataset path to test the 15 different categories of the MVTec dataset. You can log metrics to `Weights & Biases` by adding the `--wandb` flag. However you need a W&B account and an API key for this. In our setup, average run time for a MVTec category was about 3.5 hours.
 
 To evaluate CRN on the annotated Panorama images and reproduce Table 2, use the following command:
 ```bash
 python train.py --mode train --training-steps 20000 --dataset Panorama --dataset-path datasets/panorama --model crn --seed 41020
 ```
+The maximum obtained roc auc value is shown in the command line in the progress bar. It is also logged in a directory called `logged_metrics`. There a new subdirectory `version_n` is created with `n` being the largest number in the directory for the newest run being logged there.  This subdirectory
+contains a metrics.csv, which contains the `metrics/max_roc_auc` when it was logged (this value is not logged in rows before it was first logged, the last row of the csv file contains the final max roc auc score).
 This repository also contains the code for the DAGAN [1] model, so in order to reproduce the results for the DAGAN model in the same table, simply use the `--model dagan` option.
 In our setup, average run time for the panorama dataset was about 2 hours 20 minutes.
 
@@ -72,6 +76,8 @@ To evaluate CRN on the annotated road images and reproduce Table 3, use the foll
 ```bash
 python train.py --mode train --training-steps 20000 --dataset RoadImages --dataset-path datasets/roadimages --model crn --seed 41020
 ```
+The maximum obtained roc auc value is shown in the command line in the progress bar. It is also logged in a directory called `logged_metrics`. There a new subdirectory `version_n` is created with `n` being the largest number in the directory for the newest run being logged there.  This subdirectory
+contains a metrics.csv, which contains the `metrics/max_roc_auc` when it was logged (this value is not logged in rows before it was first logged, the last row of the csv file contains the final max roc auc score).
 In order to reproduce the results for the DAGAN model in the same table, again, just use the `--model dagan` option. In our setup, average run time for the road images dataset was about 2.5 hours.
 
 To view a full list of parameters, including e.g. the number of competitive units, optimizer or loss weights, run:
@@ -83,6 +89,8 @@ To reproduce Figure 7 of the paper, you can run the command below with different
 ```bash
 python train.py --mode train --training-steps 20000 --model crn --dataset MVTec --dataset-path=datasets/mvtec/cable --seed 41020 --num-competitive-units 12
 ```
+The maximum obtained roc auc value is shown in the command line in the progress bar. It is also logged in a directory called `logged_metrics`. There a new subdirectory `version_n` is created with `n` being the largest number in the directory for the newest run being logged there.  This subdirectory
+contains a metrics.csv, which contains the `metrics/max_roc_auc` when it was logged (this value is not logged in rows before it was first logged, the last row of the csv file contains the final max roc auc score).
 
 ## Demo mode:
 
@@ -95,7 +103,8 @@ python train.py --mode train --dataset RoadImages --dataset-path datasets/roadim
 
 # Inference
 
-We are not publishing the code to map the predicted anomaly scores for each image back to the point clouds they were rendered from. However, using inference, pictures are generated containing anomaly scores for each pixel. These can be used to somewhat reproduce Figure 6 of the paper.
+We are not publishing the code to map the predicted anomaly scores for each image back to the point clouds they were rendered from. So Figure 6 is not fully reproducible with this repository.
+However, using inference, pictures are generated containing anomaly scores for each pixel. These can be used to somewhat reproduce Figure 6 of the paper.
 To run inference, you first need to train a model and store checkpoints using the `--checkpoint-path` flag, e.g. for road images:
 ```bash
 python train.py --mode train --dataset RoadImages --dataset-path datasets/roadimages --model crn --checkpoint-path model_checkpoints
