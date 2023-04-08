@@ -96,8 +96,8 @@ contains a metrics.csv, which contains the `metrics/max_roc_auc` when it was log
 
 As the hardware requirements to run the experiments are rather high (the results of the papers were obtained using a A100 graphics card), you can enable demo mode with the flag `--demo`. This sets the batch size to 2, the maximum network depth to 3, the image size used for training to 32x32, the number of competitive units to 3 and the maximum number of training steps to 50. 
 
-Using only an intel i7 cpu, the following command took roughly 10 min. The obtained maximum roc auc was 0.721.
-```
+Using only an intel i7 cpu, the following command took roughly 10 min. The obtained maximum roc auc was 0.543.
+```bash
 python train.py --mode train --dataset RoadImages --dataset-path datasets/roadimages --model crn --demo --num-workers 4 --cpu --seed 41020
 ```
 
@@ -109,14 +109,14 @@ To run inference, you first need to train a model and store checkpoints using th
 ```bash
 python train.py --mode train --dataset RoadImages --dataset-path datasets/roadimages --model crn --checkpoint-path model_checkpoints
 ```
-This stores the best CRN state in `model_checkpoints/`.
+This stores the best CRN state in `model_checkpoints/`. Note: this command can also be executed using the `--demo` and `--cpu` flag.
 
 To calculate anomaly scores for one whole datasets as well as anomaly pictures, use the following command:
 ```bash
 python train.py --mode inference --dataset RoadImages --dataset-path datasets/roadimages --model crn --model-input "model_checkpoints/last.ckpt" --image-output-path inference_images/
 ```
-For `--model-input` make sure to give the correct path to the last model checkpoint.
-In our setup this step took about 10 min.
+For `--model-input` make sure to give the correct path to the last model checkpoint. This command can also be executed with the `--cpu` flag.
+In our setup this step took about 10 min (where the CRNs where not trained with in demo mode. Demo mode reduces this runtime to roughly 1 minute).
 
 To make inference for different datasets, (RoadImages, MVTec or Panorama) adjust the `--dataset` and `--dataset-path` parameters accordingly.
 
